@@ -16,12 +16,43 @@ model_path = os.path.join(prefix, 'model')
 rfr = joblib.load(os.path.join(model_path, 'RFR.pkl'))
 clf = joblib.load(os.path.join(model_path, 'LR.pkl'))
 
-app.run(host='0.0.0.0', port=8080, debug=True)
 
-@app.route("/")
-def home():
-    html = f"<h3>titanic survival prediction home</h3>"
-    return html.format(format)
+
+#@app.route("/")
+#def home():
+#    html = f"<h3>titanic survival prediction home</h3>"
+#     return html.format(format)
+
+def set_Cabin_type(df):
+    df.loc[ (df.Cabin.notnull()), 'Cabin'] = "Yes"
+    df.loc[ (df.Cabin.isnull()), 'Cabin'] = "No"
+    return df
+
+
+def process(payload):
+    payload.loc[ (payload.Fare.isnull()),'Fare'] = 0
+    tmp_df = payload[['Age','Fare','Parch','SibSp','Pclass']]
+    null_age = tmp_df[payload.Age.isnull()].to_numpy()
+
+    X = null_age[:, 1:]
+    predictedAges = rfr.predict(X)
+    payload.loc[ (payload.Age.isnull()),'Age'] = predictedAges
+
+    payload = set_Cabin_type(payload)
+    dummies_Cabin = pd.get_dummies(payload['Cabin'], prefix = 'Cabin')
+    dummies_Embarked = pd.get_dummies(payload['Embarked'], prefix = 'Embarked')
+    dummies_Sex = pd.get_dummies(payload['Sex'], prefix = 'Sex')
+    dummies_Pclass = pd.get_dummies(payload['Pclass'], prefix = 'Pclass')
+
+    df_test = pd.concat([payload, dummies_Cabin, dummies_Embarked, dummies_Sex, dummies_Pclass], axis = 1)
+    df_test.drop(['Pclass','Name',"Sex",'Ticket','Cabin','Embarked'], axis = 1, inplace = True)
+    
+    scaler = preprocessing.StandardScaler()
+    df_test['Age_scaled'] = scaler.fit_transform(df_test['Age'].values.reshape(-1,1))
+    df_test['Fare_scaled'] = scaler.fit_transform(df_test['Fare'].values.reshape(-1,1))
+    
+    test = df_test.filter(regex='Age_.*|SibSp|Parch|Fare_.*|Cabin_.*|Embarked_.*|Sex_.*|Pclass_.*')
+    return test
 
 # check if the server is running and healthy
 @app.route('/ping',methods=['GET'])
@@ -59,34 +90,5 @@ def predict():
 
     return flask.jsonify({'prediction': prediction})
 
-def set_Cabin_type(df):
-    df.loc[ (df.Cabin.notnull()), 'Cabin'] = "Yes"
-    df.loc[ (df.Cabin.isnull()), 'Cabin'] = "No"
-    return df
 
-
-def process(payload):
-    payload.loc[ (payload.Fare.isnull()),'Fare'] = 0
-    tmp_df = payload[['Age','Fare','Parch','SibSp','Pclass']]
-    null_age = tmp_df[payload.Age.isnull()].to_numpy()
-
-    X = null_age[:, 1:]
-    predictedAges = rfr.predict(X)
-    payload.loc[ (payload.Age.isnull()),'Age'] = predictedAges
-
-    payload = set_Cabin_type(payload)
-    dummies_Cabin = pd.get_dummies(payload['Cabin'], prefix = 'Cabin')
-    dummies_Embarked = pd.get_dummies(payload['Embarked'], prefix = 'Embarked')
-    dummies_Sex = pd.get_dummies(payload['Sex'], prefix = 'Sex')
-    dummies_Pclass = pd.get_dummies(payload['Pclass'], prefix = 'Pclass')
-
-    df_test = pd.concat([payload, dummies_Cabin, dummies_Embarked, dummies_Sex, dummies_Pclass], axis = 1)
-    df_test.drop(['Pclass','Name',"Sex",'Ticket','Cabin','Embarked'], axis = 1, inplace = True)
-    
-    scaler = preprocessing.StandardScaler()
-    df_test['Age_scaled'] = scaler.fit_transform(df_test['Age'].values.reshape(-1,1))
-    df_test['Fare_scaled'] = scaler.fit_transform(df_test['Fare'].values.reshape(-1,1))
-    
-    test = df_test.filter(regex='Age_.*|SibSp|Parch|Fare_.*|Cabin_.*|Embarked_.*|Sex_.*|Pclass_.*')
-    return test
 

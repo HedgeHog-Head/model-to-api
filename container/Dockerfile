@@ -24,6 +24,6 @@ ENV PYTHONDONTWRITEBYTECODE=TRUE
 ENV PATH="/opt/program:${PATH}"
 
 
-COPY sentiment_analysis /opt/program
+COPY titanic_analysis /opt/program
 WORKDIR /opt/program
 
