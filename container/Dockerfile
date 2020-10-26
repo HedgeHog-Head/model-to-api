@@ -1,29 +1,24 @@
-# Build an image that can do training and inference in SageMaker
-# This is a Python 3 image that uses the nginx, gunicorn, flask stack
-# for serving inferences in a stable way.
+FROM python:3.6
 
-FROM ubuntu:16.04
-
+# first layers should be dependency install so changes in code won't cause the build to
+# start from scratch.
+COPY requirements.txt /opt/program/requirements.txt
 
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
          wget \
-         python3 \
          nginx \
          ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-
-RUN wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py && \
-    pip install numpy scipy==1.5.3 scikit-learn==0.23.2 pandas nltk xlrd flask gevent gunicorn && \
-    make install && \
-        rm -rf /root/.cache
+RUN pip3 install --no-cache-dir -r /opt/program/requirements.txt
 
 
 ENV PYTHONUNBUFFERED=TRUE
 ENV PYTHONDONTWRITEBYTECODE=TRUE
 ENV PATH="/opt/program:${PATH}"
+ENV MODEL_PATH="/opt/ml/model"
 
-
+# Set up the program in the image
 COPY titanic_analysis /opt/program
 WORKDIR /opt/program
 
