@@ -2,7 +2,7 @@
 # This is a Python 3 image that uses the nginx, gunicorn, flask stack
 # for serving inferences in a stable way.
 
-FROM ubuntu
+FROM ubuntu:16.04
 
 
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
