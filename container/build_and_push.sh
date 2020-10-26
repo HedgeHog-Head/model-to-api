@@ -13,7 +13,7 @@ then
     exit 1
 fi
 
-chmod +x sentiment_analysis/serve
+chmod +x titanic_analysis/serve
 
 # ~/.local/bin/aws
 # Get the account number associated with the current IAM credentials
